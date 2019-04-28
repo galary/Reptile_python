@@ -1,0 +1,78 @@
+# _*_ utf-8 _*_
+import requests
+import random
+from bs4 import BeautifulSoup
+import time
+import datetime
+
+
+class Book_spider():
+    url = ''
+    headers = [
+        {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0'},
+        {'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'},
+        {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.12 Safari/535.11'},
+        {'User-Agent': 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0)'},
+        {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:40.0) Gecko/20100101 Firefox/40.0'},
+        {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/44.0.2403.89 Chrome/44.0.2403.89 Safari/537.36'}
+    ]
+    MAX_RETRIES = 20
+    session = requests.Session()
+    session = requests.Session()
+    adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
+    session.mount('https://', adapter)
+    session.mount('http://', adapter)
+
+    '''
+    所有章节列表页面
+    '''
+    def items_list(self):
+        for n in range(1,59):
+            time.sleep(3)
+            book_request = self.session.get(self.url+'&page='+str(n), headers=random.choice(self.headers))
+            book_request.encoding = 'gbk'  # 看网站编码是什么，不然就会爬出的数据是乱码       
+            book_obj = BeautifulSoup(book_request.text, 'html.parser')
+            book_divs = book_obj.find_all('div',class_='li_title')#.find_all('a')  # 找到所有章节的a标签连接
+            for item in book_divs:
+                #print('item:' + item.prettify())
+                html_jobs = item.prettify()
+                job_obj = BeautifulSoup(html_jobs,'html.parser')
+                job = job_obj.find('a')
+                #print(job['href']+job.text)
+                title = job.text
+                job_url = job['href']
+                self.item_content(job_url,title)
+    
+    '''
+    每章节的正文内容
+    '''
+    def item_content(self, item_url, title):
+        root_url = 'https://www.kq36.com'
+        #print('title:' + title)
+        #print('item_url:' + item_url)
+        content_request = self.session.get(root_url+item_url, headers=random.choice(self.headers))
+        content_request.encoding = 'gbk'
+        content_obj = BeautifulSoup(content_request.text, 'html.parser')
+        content_obj.encode('utf-8')
+        content = content_obj.find_all('td', attrs={'width': '47%'}) 
+        message = ''
+        for item in content:
+            html_contact = item.prettify()
+            job_obj = BeautifulSoup(html_contact,'html.parser')
+            #job = job_obj.next_sibling.next_sibling.get_text()
+            #print(job_obj.find('span',class_='font_color').text)
+            message = message + ' ' + job_obj.find('span',class_='font_color').text.strip()
+        print(message)
+        time.sleep(1)
+        with open('henan.txt', 'a', encoding='utf-8') as f:
+            f.write(message+'\n')  
+
+
+
+    def __init__(self):
+        print('start: %s' % str(datetime.date.today())+" "+time.strftime("%H:%M:%S"))
+        self.items_list()
+        print('end: %s' % str(datetime.date.today())+" "+time.strftime("%H:%M:%S"))
+
+
+bs = Book_spider()
